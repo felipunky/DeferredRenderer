@@ -33,7 +33,7 @@ struct Light {
 
 // Unfortunately we can't send the number of lights as a uniform to get this value 
 // automatically, so just hard-code it here for our loop.
-const int NR_LIGHTS = 3;
+const int NR_LIGHTS = 30;
 uniform Light lights[NR_LIGHTS];
 uniform vec3 viewPos;
 
@@ -102,7 +102,7 @@ void main()
 	float eps = spotLight.Cutoff - spotLight.OuterCuttoff;
 	float inte = clamp( ( the - spotLight.OuterCuttoff ) / eps, 0.0, 1.0 );
 
-	vec3 diff = dif * 2.0 * spotLight.Colour;
+	vec3 diff = dif * spotLight.Colour;
 	vec3 spe = spotLight.Colour * pow( max( dot( spotLight.RayDirection, ref ), 0.0 ), 32.0 );
 	diff *= inte * atte;
 	spe  *= inte * atte;

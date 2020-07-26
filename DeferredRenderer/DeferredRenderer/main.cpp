@@ -28,7 +28,7 @@ public:
 	{
 
 		initWindow();
-		initShaders();
+		//initShaders();
 		setupGBuffer();
 		initGeometry();
 		renderLoop();
@@ -40,7 +40,7 @@ private:
 	GLFWwindow* window;
 
 	// Original size of the window.
-	const uint16_t WIDTH = 1200, HEIGHT = 800;
+	const uint16_t WIDTH = 800, HEIGHT = 600;
 	bool framebufferResized = false;
 
 	// Shader pointers.
@@ -69,14 +69,18 @@ private:
 
 	// Geometry's ids.
 	GLuint quadVertexArrayObject, quadVertexBufferObject, quadElementBufferObject,
-		   screenQuadVertexArrayObject, screenQuadVertexBufferObject;
+		   screenQuadVertexArrayObject = 0, screenQuadVertexBufferObject,
+		   cubeVertexArrayObject = 0, cubeVertexBufferObject;
 
 	// Lights.
-	const uint16_t NUMBER_OF_LIGHTS = 3;
+	const uint16_t NUMBER_OF_LIGHTS = 30;
 	const float constant = 1.0;
 	const float linear = 0.7;
 	const float quadratic = 1.8;
 	std::vector<glm::vec3> lightPositions, lightColours;
+
+	// Objects.
+	std::vector<glm::vec3> objectPositions;
 
 	void initWindow()
 	{
@@ -91,6 +95,7 @@ private:
 		if( window == NULL )
 		{
 		
+			glfwTerminate();
 			throw std::runtime_error( "Failed to create a window!" );
 		
 		}
@@ -100,9 +105,6 @@ private:
 		glfwSetFramebufferSizeCallback( window, framebufferResizeCallback );
 		glfwSetMouseButtonCallback( window, mouseClickCallBack );
 		glfwSetCursorPosCallback( window, mouseCallback );
-		glfwSetWindowAspectRatio( window, HEIGHT, WIDTH );
-
-		glfwSetInputMode( window, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
 
 		// glad is used to get function pointer to OpenGL at runtime.
 		if( !gladLoadGLLoader( ( GLADloadproc )glfwGetProcAddress ) )
@@ -112,57 +114,49 @@ private:
 		
 		}
 
+		glViewport( 0, 0, WIDTH, HEIGHT );
+
 		glEnable( GL_DEPTH_TEST );
-
-	}
-
-	void initShaders()
-	{
-
-		// Although there is no consensus on the extension for shader files, I am using a plugin for VS2019
-		// that enables some syntax highlighting and auto-completion called GLSL Language Integration and it
-		// accepts this two: "*.vert" and "*.frag".
-		shaderG = &Shader( "gBuffer.vert", "gBuffer.frag" ); // Watchout for the order! It's not a compiler bug!
-		shaderL = &Shader( "lightBuffer.vert", "lightBuffer.frag" );
-		shaderF = &Shader( "forward.vert", "forward.frag" );
 
 	}
 
 	void setupGBuffer()
 	{
 
-		glGenFramebuffers(1, &gBuffer);
-		glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+		// This is a very memory consuming way of implementing a GBuffer it is possible to calculate it
+		// through the depth buffer. Maybe later.
+		glGenFramebuffers( 1, &gBuffer );
+		glBindFramebuffer( GL_FRAMEBUFFER, gBuffer );
 		// position color buffer
-		glGenTextures(1, &gPosition);
-		glBindTexture(GL_TEXTURE_2D, gPosition);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WIDTH, HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0);
+		glGenTextures( 1, &gPosition );
+		glBindTexture( GL_TEXTURE_2D, gPosition );
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, WIDTH, HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0 );
 		// normal color buffer
-		glGenTextures(1, &gNormal);
-		glBindTexture(GL_TEXTURE_2D, gNormal);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WIDTH, HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
+		glGenTextures( 1, &gNormal );
+		glBindTexture( GL_TEXTURE_2D, gNormal );
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, WIDTH, HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0 );
 		// color + specular color buffer
-		glGenTextures(1, &gAlbedoSpec);
-		glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
+		glGenTextures( 1, &gAlbedoSpec );
+		glBindTexture( GL_TEXTURE_2D, gAlbedoSpec );
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0 );
 		// tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
 		unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-		glDrawBuffers(3, attachments);
+		glDrawBuffers( 3, attachments );
 		// create and attach depth buffer (renderbuffer)
 		unsigned int rboDepth;
-		glGenRenderbuffers(1, &rboDepth);
-		glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, WIDTH, HEIGHT);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+		glGenRenderbuffers( 1, &rboDepth );
+		glBindRenderbuffer( GL_RENDERBUFFER, rboDepth );
+		glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT, WIDTH, HEIGHT );
+		glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth );
 		// finally check if framebuffer is complete
 		if( glCheckFramebufferStatus( GL_FRAMEBUFFER ) != GL_FRAMEBUFFER_COMPLETE )
 		{
@@ -171,18 +165,25 @@ private:
 		
 		}
 		
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		// Configure the gBuffer textures.
-		shaderL->use();
-		shaderL->setInt( "gPosition", 0 );
-		shaderL->setInt( "gNormal", 1 );
-		shaderL->setInt( "gAlbedoSpec", 2 );
+		glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
 	}
 
 	void renderLoop()
 	{
+
+		// Although there is no consensus on the extension for shader files, I am using a plugin for VS2019
+		// that enables some syntax highlighting and auto-completion called GLSL Language Integration and it
+		// accepts this two: "*.vert" and "*.frag".
+		// Watchout for the scope of these shaders.
+		shaderG = &Shader( "gBuffer.vert", "gBuffer.frag" );			// Watchout for the order..... 
+		shaderL = &Shader( "lightBuffer.vert", "lightBuffer.frag" );	// no, it's not a compiler bug!
+		shaderF = &Shader( "forward.vert", "forward.frag" );
+
+		shaderL->use();
+		shaderL->setInt( "gPosition", 0 );
+		shaderL->setInt( "gNormal", 1 );
+		shaderL->setInt( "gAlbedoSpec", 2 );
 
 		// No need to compute this every frame as the FOV stays always the same.
 		glm::mat4 projection = glm::perspective( glm::radians( 45.0f ), ( float ) WIDTH / ( float ) HEIGHT,
@@ -194,7 +195,7 @@ private:
 
 		shaderF->use();
 		shaderF->setMat4( "projection", projection );
-
+		std::cout << objectPositions.size() << std::endl;
 		while( !glfwWindowShouldClose( window ) )
 		{
 
@@ -225,12 +226,20 @@ private:
 			shaderG->use();
 			shaderG->setMat4( "view", view );
 
-			// TODO: find a cool way to distribute geometry without a LUT
-			//for( uint16_t i = 0; i <  )
-			model = glm::scale( model, glm::vec3( 3.0 ) );
-			model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
-			shaderG->setMat4( "model", model );
-			quad( &quadVertexArrayObject, &quadVertexBufferObject, &quadElementBufferObject );
+			for( unsigned int i = 0; i < objectPositions.size(); i++ )
+			{
+
+				// Restart the matrix for each element.
+				model = glm::mat4( 1.0f );
+				model = glm::translate( model, objectPositions[i] + glm::vec3( 0.0f, 0.1 * sin( time + i ), 0.0f ) ) ;
+				//model = glm::scale( model, glm::vec3( 0.8f ) );
+				model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
+				shaderG->setMat4("model", model);
+				GLuint VAO, VBO, EBO;
+				quad( &VAO, &VBO, &EBO );
+				//renderCube(); 
+
+			}
 
 			glBindFramebuffer( GL_FRAMEBUFFER, 0 ); // Unbind.
 
@@ -252,13 +261,10 @@ private:
 			shaderL->setFloat( "spotLight.Cutoff", glm::cos( glm::radians( 12.5 ) ) );
 			shaderL->setFloat( "spotLight.OuterCutoff", glm::radians( 17.5 ) );
 
-			// Send the camera.
-			shaderL->setVec3( "viewPos", camPos );
-
 			for( uint16_t i = 0; i < lightPositions.size(); ++i )
 			{
 			
-				lightPositions[i] = glm::vec3( 3.0f * sin( lastFrame + i ), 0.5f, 3.0f * cos(lastFrame + i) );
+				lightPositions[i] = glm::vec3( 5.0f * sin( time * 0.1f + i ), 1.0f, 5.0f * cos( 0.2f * time + i ) );
 				shaderL->setVec3("lights[" + std::to_string(i) + "].Position", lightPositions[i]);
 				shaderL->setVec3("lights[" + std::to_string(i) + "].Color", lightColours[i]);
 				// update attenuation parameters and calculate radius
@@ -266,9 +272,39 @@ private:
 				shaderL->setFloat("lights[" + std::to_string(i) + "].Quadratic", quadratic);
 				// then calculate radius of light volume/sphere
 				const float maxBrightness = std::fmaxf(std::fmaxf(lightColours[i].r, lightColours[i].g), lightColours[i].b);
-				float radius = (-linear + std::sqrt(linear * linear - 4 * quadratic * (constant - (256.0f / 5.0f) * maxBrightness))) / (2.0f * quadratic);
+				float radius = (-linear + std::sqrt(linear * linear - 4 * quadratic * (constant - (51.2f) * maxBrightness))) / (2.0f * quadratic);
 				shaderL->setFloat("lights[" + std::to_string(i) + "].Radius", radius);
 			
+			}
+
+			// Send the camera.
+			shaderL->setVec3( "viewPos", camPos );
+
+			renderQuad();
+
+			// Add the depth buffer data to the default framebuffers' depth buffer. So that we can properly
+			// merge the deferred renderer with a normal forward renderer, this forward renderer will only
+			// render lights as very bright colours, nothing fancy yet.
+			glBindFramebuffer( GL_READ_FRAMEBUFFER, gBuffer );
+			glBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 );
+			glBlitFramebuffer( 0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST );
+			glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+
+			// 3rd pass, through a forward render add lights representation to the scene.
+			shaderF->use();
+			shaderF->setMat4( "view", view );
+
+			for( uint16_t i = 0; i < lightPositions.size(); ++i )
+			{
+
+				model = glm::mat4( 1.0f );
+				model = glm::translate( model, lightPositions[i] );
+				model = glm::scale( model, glm::vec3( 0.085f ) );
+				shaderF->setMat4( "model", model );
+				shaderF->setVec3( "lightColour", lightColours[i] );
+				renderCube();
+				//cube( &cubeVertexArrayObject, &cubeVertexBufferObject );
+
 			}
 
 			glfwSwapBuffers( window );
@@ -284,6 +320,18 @@ private:
 
 	void initGeometry()
 	{
+
+		for( float x = -5.0; x < 5.0; x += 1.0 )
+		{
+
+			for( float y = -5.0; y < 5.0; y += 1.0 )
+			{
+			
+				objectPositions.push_back( glm::vec3( x, sin( x + y ) * 0.1f, y ) );
+
+			}
+
+		}
 
 		for( uint16_t i = 0; i < NUMBER_OF_LIGHTS; ++i )
 		{
@@ -381,9 +429,9 @@ private:
 
 	}
 
-	void screenQuad( GLuint* quadVAO, GLuint* quadVBO )
+	void renderQuad()
 	{
-		if( *quadVAO == 0 )
+		if (screenQuadVertexArrayObject == 0)
 		{
 			float quadVertices[] = {
 				// positions        // texture Coords
@@ -393,21 +441,90 @@ private:
 				 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
 			};
 			// setup plane VAO
-			glGenVertexArrays( 1, quadVAO );
-			glGenBuffers( 1, quadVBO );
-			glBindVertexArray( *quadVAO );
-			glBindBuffer( GL_ARRAY_BUFFER, *quadVBO );
-			glBufferData( GL_ARRAY_BUFFER, sizeof( quadVertices ), &quadVertices, GL_STATIC_DRAW );
-			glEnableVertexAttribArray( 0 );
-			glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof( float ), ( void* ) 0 );
-			glEnableVertexAttribArray( 1 );
-			glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof( float ), 
-															( void* )( 3 * sizeof( float ) ) );
+			glGenVertexArrays(1, &screenQuadVertexArrayObject);
+			glGenBuffers(1, &screenQuadVertexBufferObject);
+			glBindVertexArray(screenQuadVertexArrayObject);
+			glBindBuffer(GL_ARRAY_BUFFER, screenQuadVertexBufferObject);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+			glEnableVertexAttribArray(1);
+			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 		}
+		glBindVertexArray(screenQuadVertexArrayObject);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		glBindVertexArray(0);
+	}
 
-		glBindVertexArray( *quadVAO );
-		glDrawArrays( GL_TRIANGLE_STRIP, 0, 4 );
-		glBindVertexArray( 0 );
+	void renderCube()
+	{
+		// initialize (if necessary)
+		if (cubeVertexArrayObject == 0)
+		{
+			float vertices[] = {
+				// back face
+				-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+				 1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+				 1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right         
+				 1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+				-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+				-1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
+				// front face
+				-1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+				 1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
+				 1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+				 1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+				-1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
+				-1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+				// left face
+				-1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+				-1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
+				-1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+				-1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+				-1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+				-1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+				// right face
+				 1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+				 1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+				 1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right         
+				 1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+				 1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+				 1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left     
+				// bottom face
+				-1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+				 1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
+				 1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+				 1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+				-1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+				-1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+				// top face
+				-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+				 1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+				 1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right     
+				 1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+				-1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+				-1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left        
+			};
+			glGenVertexArrays(1, &cubeVertexArrayObject);
+			glGenBuffers(1, &cubeVertexBufferObject);
+			// fill buffer
+			glBindBuffer(GL_ARRAY_BUFFER, cubeVertexBufferObject);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+			// link vertex attributes
+			glBindVertexArray(cubeVertexArrayObject);
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+			glEnableVertexAttribArray(1);
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+			glEnableVertexAttribArray(2);
+			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindVertexArray(0);
+		}
+		// render Cube
+		glBindVertexArray(cubeVertexArrayObject);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glBindVertexArray(0);
 	}
 
 	void free()
@@ -418,6 +535,12 @@ private:
 		glDeleteBuffers( 1, &quadVertexBufferObject );
 		glDeleteBuffers( 1, &quadElementBufferObject );
 		glDeleteVertexArrays( 1, &quadVertexArrayObject );
+
+		glDeleteBuffers( 1, &screenQuadVertexBufferObject );
+		glDeleteVertexArrays( 1, &screenQuadVertexArrayObject );
+
+		glDeleteBuffers( 1, &cubeVertexBufferObject );
+		glDeleteVertexArrays( 1, &cubeVertexArrayObject );
 
 		glDeleteTextures( 1, &gPosition );
 		glDeleteTextures( 1, &gNormal );
@@ -432,6 +555,8 @@ private:
 
 		auto app = reinterpret_cast<RenderEngine*>( glfwGetWindowUserPointer( window ) );
 		app->framebufferResized = true;
+
+		glViewport( 0, 0, width, height );
 
 	}
 

@@ -14,7 +14,7 @@ in vec3 Normal;
 // primitives I am just leaving a sampler here for getting textures 
 // just in case, but I would probably hard-code the Albedo and Specular
 // values due to the time factor.
-uniform sampler2D texture1;
+//uniform sampler2D texture1;
 
 void main()
 {    
