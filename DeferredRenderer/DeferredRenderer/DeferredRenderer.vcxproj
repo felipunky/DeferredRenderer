@@ -144,6 +144,8 @@
     <None Include="gBuffer.vert" />
     <None Include="lightBuffer.frag" />
     <None Include="lightBuffer.vert" />
+    <None Include="shadowMapping.frag" />
+    <None Include="shadowMapping.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

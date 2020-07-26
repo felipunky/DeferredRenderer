@@ -15,9 +15,13 @@ out vec3 FragPos;
 out vec2 TexCoords;
 out vec3 Normal;
 
+// We need to send the depth map in light space to our fragment shader.
+out vec4 FragPosLightSpace;
+
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lightSpaceMatrix;
 
 void main()
 {
@@ -30,6 +34,8 @@ void main()
     
     mat3 normalMatrix = transpose( inverse( mat3( model ) ) );
     Normal = normalMatrix * aNormal;
+
+	FragPosLightSpace = lightSpaceMatrix * worldPos;
 
     gl_Position = projection * view * worldPos;
 

@@ -57,16 +57,23 @@ float distSquared( vec3 A, vec3 B )
 
 }
 
+// required when using a perspective projection matrix
+float LinearizeDepth(float depth)
+{
+    float z = depth * 2.0 - 1.0; // Back to NDC 
+    return (2.0 * 1.0 * 7.5) / (7.5 + 1.0 - z * (7.5 - 1.0));	
+}
+
 void main()
 {             
     // Get the data from the gBuffer.
     vec3 FragPos = texture( gPosition, TexCoords ).rgb;
-    vec3 Normal = texture( gNormal, TexCoords ).rgb;
+    vec4 Normal = texture( gNormal, TexCoords );
     vec3 Diffuse = texture( gAlbedoSpec, TexCoords ).rgb;
     float Specular = texture( gAlbedoSpec, TexCoords ).a;
     
 	// Make sure that we do not colour not geometric stuff.
-	if( Normal == vec3( 0 ) ) discard;
+	if( Normal.xyz == vec3( 0 ) ) discard;
 
     // Normal lighting calculations.
     vec3 lighting  = Diffuse * 0.1; // TODO: Find a better way of doing this.
@@ -95,10 +102,10 @@ void main()
 			//              /  |     B
 			//             ---------------->
             vec3 lightDir = normalize( lights[i].Position - FragPos );
-            vec3 diffuse = max( dot( Normal, lightDir ), 0.0 ) * Diffuse * lights[i].Colour;
+            vec3 diffuse = max( dot( Normal.xyz, lightDir ), 0.0 ) * Diffuse * lights[i].Colour;
             // specular
             vec3 halfwayDir = normalize( lightDir + viewDir );  
-            float spec = pow( max( dot( Normal, halfwayDir ), 0.0 ), 16.0 );
+            float spec = pow( max( dot( Normal.xyz, halfwayDir ), 0.0 ), 16.0 );
             vec3 specular = lights[i].Colour * spec * Specular;
             // attenuation
 			// Don't forget to calculate the square root of the dist variable,
@@ -131,8 +138,8 @@ void main()
 	vec3 lig = normalize( spotLight.Position - FragPos );
 	float the = dot( lig, normalize( -spotLight.RayDirection ) );
 
-	float diff = max( dot( Normal, lig ), 0.0 );
-	vec3 ref = reflect( -lig, Normal );
+	float diff = max( dot( Normal.xyz, lig ), 0.0 );
+	vec3 ref = reflect( -lig, Normal.xyz );
 	float atte = decay( spotLight.Position, FragPos, 0.09, 0.032 );
 	float e = spotLight.Cutoff - spotLight.OuterCuttoff;
 	float inte = clamp( ( the - spotLight.OuterCuttoff ) / e, 0.0, 1.0 );
@@ -143,7 +150,7 @@ void main()
 
 	lighting += dif + spe;
 
-	FragColor = vec4( lighting, 1 );
+	FragColor = vec4( LinearizeDepth( Normal.w ) );
 	// Cheap and dirty gamma correction.
     //FragColor = vec4( pow( lighting, vec3( 0.4545 ) ), 1.0 );
 

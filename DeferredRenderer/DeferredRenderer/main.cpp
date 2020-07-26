@@ -43,6 +43,9 @@ private:
 	const uint16_t WIDTH = 1200, HEIGHT = 800;
 	bool framebufferResized = false;
 
+	// The current time since we started rendering.
+	float time = 0.0f;
+
 	// Shader pointers.
 	// Geometry pass.
 	Shader* shaderG;
@@ -50,6 +53,8 @@ private:
 	Shader* shaderL;
 	// Forward render pass.
 	Shader* shaderF;
+	// Shadow mapping pass.
+	Shader* shaderShadow;
 
 	// GBuffer ids.
 	// FBO.
@@ -93,6 +98,9 @@ private:
 
 	// Objects.
 	std::vector<glm::vec3> objectPositions;
+
+	// Our global model matrix, we need this since we are going to be calling this in different functions.
+	glm::mat4 model = glm::mat4( 1.0f );
 
 	void initWindow()
 	{
@@ -213,6 +221,9 @@ private:
 		shaderG = &Shader( "gBuffer.vert", "gBuffer.frag" );			// Watchout for the order..... 
 		shaderL = &Shader( "lightBuffer.vert", "lightBuffer.frag" );	// no, it's not a compiler bug!
 		shaderF = &Shader( "forward.vert", "forward.frag" );
+		
+		// ShadowMapping.
+		shaderShadow = &Shader( "shadowMapping.vert", "shadowMapping.frag" );
 
 		shaderL->use();
 		shaderL->setInt( "gPosition", 0 );
@@ -229,7 +240,11 @@ private:
 
 		shaderF->use();
 		shaderF->setMat4( "projection", projection );
-		std::cout << objectPositions.size() << std::endl;
+		
+		float nearPlane = 1.0f, farPlane = 7.5;
+
+		glm::mat4 lightProj = glm::ortho( -10.0f, 10.0f, -10.0f, 10.0f, nearPlane, farPlane );
+
 		while( !glfwWindowShouldClose( window ) )
 		{
 
@@ -237,7 +252,7 @@ private:
 			static auto startTime = std::chrono::high_resolution_clock::now();
 
 			auto currentTime = std::chrono::high_resolution_clock::now();
-			float time = std::chrono::duration<float, std::chrono::seconds::period>( currentTime - startTime ).count();
+			time = std::chrono::duration<float, std::chrono::seconds::period>( currentTime - startTime ).count();
 
 			deltaTime = time - lastFrame;
 			lastFrame = time;
@@ -248,10 +263,29 @@ private:
 			glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
 			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 			
+			// Render the shadow map.
+			glm::mat4 lightView = glm::lookAt( camPos, glm::vec3( 0.0f ), glm::vec3( 0.0f, 1.0f, 0.0f ) );
+			glm::mat4 lightSpace = lightProj * lightView;
+			shaderShadow->use();
+			shaderShadow->setMat4( "lightSpaceMatrix", lightSpace );
+
+			// We have a different resolution for our shadow map, for optimization reasons. Don't forget to 
+			// call the glViewport function to change the size we are rendering at.
+			glViewport( 0, 0, SHA_WIDTH, SHA_HEIGHT );
+			glBindFramebuffer( GL_FRAMEBUFFER, depthFBO );
+			glClear( GL_DEPTH_BUFFER_BIT );
+			//glActiveTexture( GL_TEXTURE0 );
+			//glBindTexture( GL_TEXTURE_2D,  );
+			renderScene( shaderShadow );
+			glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+
+			glViewport( 0, 0, WIDTH, HEIGHT );
+			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
 			// Create the camera (eye).
 			glm::mat4 view = glm::lookAt( camPos, camPos + camFront, camUp );
-			// Create ant initialize the model matrix.
-			glm::mat4 model = glm::mat4( 1.0f );
+			// Initialize the model matrix.
+			model = glm::mat4( 1.0f );
 
 			// 1st pass, this is when the geometry is added into the gBuffer.
 			glBindFramebuffer( GL_FRAMEBUFFER, gBuffer );
@@ -267,26 +301,11 @@ private:
 			shaderG->setMat4( "model", model );
 			shaderG->setVec3( "rayOrigin", camPos );
 			shaderG->setVec3( "rayDirection", camFront );
+			shaderG->setMat4( "lightSpaceMatrix", lightSpace );
+			glActiveTexture( GL_TEXTURE0 );
+			glBindTexture( GL_TEXTURE_2D, depthMap );
 
-			GLuint VAO, VBO, EBO;
-			quad( &VAO, &VBO, &EBO );
-
-			for( unsigned int i = 0; i < objectPositions.size(); i++ )
-			{
-
-				// Restart the matrix for each element.
-				model = glm::mat4( 1.0f );
-				model = glm::translate( model, objectPositions[i] + glm::vec3( 0.0f, 
-																			   sin( time + i ) + 1.0f, 
-																			   0.0f ) ) ;
-				model = glm::scale( model, glm::vec3( 0.8f ) );
-				//model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
-				shaderG->setMat4( "model", model );
-				//GLuint VAO, VBO, EBO;
-				//quad( &VAO, &VBO, &EBO );
-				renderCube(); 
-
-			}
+			renderScene( shaderG );
 
 			glBindFramebuffer( GL_FRAMEBUFFER, 0 ); // Unbind.
 
@@ -323,7 +342,7 @@ private:
 				shaderL->setFloat("lights[" + std::to_string(i) + "].Quadratic", quadratic);
 				// then calculate radius of light volume/sphere
 				const float maxBrightness = std::fmaxf(std::fmaxf(lightColours[i].r, lightColours[i].g), lightColours[i].b);
-				float radius = (-linear + std::sqrt(linear * linear - 4 * quadratic * (constant - (51.2f) * maxBrightness))) / (2.0f * quadratic);
+				float radius = (-linear + std::sqrt(linear * linear - 4 * quadratic * (constant - (200.0f) * maxBrightness))) / (2.0f * quadratic);
 				shaderL->setFloat("lights[" + std::to_string(i) + "].Radius", radius);
 			
 			}
@@ -366,6 +385,30 @@ private:
 		// Don't leak!
 		free();
 		glfwTerminate();
+
+	}
+
+	void renderScene( Shader* shader )
+	{
+
+		quad( &quadVertexArrayObject, &quadVertexBufferObject, &quadElementBufferObject );
+
+		for( unsigned int i = 0; i < objectPositions.size(); i++ )
+		{
+
+			// Restart the matrix for each element.
+			model = glm::mat4( 1.0f );
+			model = glm::translate( model, objectPositions[i] + glm::vec3( 0.0f, 
+																			sin( time + i ) + 1.0f, 
+																			0.0f ) ) ;
+			model = glm::scale( model, glm::vec3( 0.8f ) );
+			//model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
+			shader->setMat4( "model", model );
+			//GLuint VAO, VBO, EBO;
+			//quad( &VAO, &VBO, &EBO );
+			renderCube(); 
+
+		}
 
 	}
 
