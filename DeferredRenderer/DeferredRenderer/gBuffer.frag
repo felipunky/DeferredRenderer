@@ -16,6 +16,10 @@ in vec3 Normal;
 // values due to the time factor.
 //uniform sampler2D texture1;
 
+// This corresponds to the camera.
+uniform vec3 rayPos;
+uniform vec3 rayDirection;
+
 void main()
 {    
     // Send the fragment's position.
@@ -25,9 +29,17 @@ void main()
     // Ideal world this would be something better, but if we have proper
 	// normals for our geometry we would be able to get something good 
 	// enough from a colour defined here.
-    gAlbedoSpec.rgb = vec3( 0.5 );
+	vec3 lig = normalize( vec3( 1.0, 0.8, 0.6 ) - FragPos ); // Ligth source.
+	float dif = max( dot( lig, gNormal ), 0.0 );
+
+	vec3 diff = dif * vec3( 1.0 );
+
+	vec3 ref = reflect( lig, gNormal );
+	float spe = pow( max( dot( rayDirection, ref ), 0.0 ), 32.0 );
+
+    gAlbedoSpec.rgb = vec3( 0.5 );//vec3( Normal * 0.5 + 0.5 );
     // We are using the alpha channel of the gAlbedoSpec vec3 to store 
 	// our specular world, again in an ideal world this would be a 
 	// pre-computed specular map. 
-    gAlbedoSpec.a = 1.0;
+    gAlbedoSpec.a = 10.0;
 }

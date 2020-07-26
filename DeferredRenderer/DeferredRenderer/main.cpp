@@ -40,7 +40,7 @@ private:
 	GLFWwindow* window;
 
 	// Original size of the window.
-	const uint16_t WIDTH = 800, HEIGHT = 600;
+	const uint16_t WIDTH = 1200, HEIGHT = 800;
 	bool framebufferResized = false;
 
 	// Shader pointers.
@@ -52,11 +52,23 @@ private:
 	Shader* shaderF;
 
 	// GBuffer ids.
+	// FBO.
 	unsigned int gBuffer;
+	// Textures.
 	unsigned int gPosition, gNormal, gAlbedoSpec;
+
+	// Shadow map.
+	// Size.
+	const uint16_t SHA_WIDTH = 1024, SHA_HEIGHT = 1024;
+	// Ids.
+	// FBO.
+	unsigned int depthFBO;
+	// Textures.
+	unsigned int depthMap;
 
 	// User interaction.
 	// OpenGL is right handed so the last component corresponds to move forward/backwards.
+	const float SPEED = 5.0f;
 	glm::vec3 camPos = glm::vec3( 0.0f, 2.0f, 3.0f ); 
 	glm::vec3 camFront = glm::vec3( 0.0f, 0.0f, -1.0f );
 	glm::vec3 camUp = glm::vec3( 0.0f, 1.0f, 0.0f );
@@ -105,6 +117,8 @@ private:
 		glfwSetFramebufferSizeCallback( window, framebufferResizeCallback );
 		glfwSetMouseButtonCallback( window, mouseClickCallBack );
 		glfwSetCursorPosCallback( window, mouseCallback );
+		// https://stackoverflow.com/questions/4431637/hiding-mouse-cursor-with-glfw
+		glfwSetInputMode( window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN );
 
 		// glad is used to get function pointer to OpenGL at runtime.
 		if( !gladLoadGLLoader( ( GLADloadproc )glfwGetProcAddress ) )
@@ -169,6 +183,26 @@ private:
 
 	}
 
+	void setupDepth()
+	{
+
+		glGenFramebuffers( 1, &depthFBO );
+		glGenTextures( 1, &depthMap );
+		glBindTexture( GL_TEXTURE_2D, depthMap );
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHA_WIDTH, SHA_HEIGHT, 0, GL_DEPTH_COMPONENT, 
+					  GL_FLOAT, NULL );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+		glBindFramebuffer( GL_FRAMEBUFFER, depthFBO );
+		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0 );
+		glDrawBuffer( GL_NONE ); 
+		glReadBuffer( GL_NONE );
+		glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+
+	}
+
 	void renderLoop()
 	{
 
@@ -229,8 +263,11 @@ private:
 			model = glm::mat4( 1.0f );
 			model = glm::scale( model, glm::vec3( 50.0f ) );
 			model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
-			//model = glm::translate( model, glm::vec3( 0.0f, 0.0f, -1.0f ) );
+			model = glm::translate( model, glm::vec3( 0.0f, 0.0f, -0.03f ) );
 			shaderG->setMat4( "model", model );
+			shaderG->setVec3( "rayOrigin", camPos );
+			shaderG->setVec3( "rayDirection", camFront );
+
 			GLuint VAO, VBO, EBO;
 			quad( &VAO, &VBO, &EBO );
 
@@ -242,8 +279,8 @@ private:
 				model = glm::translate( model, objectPositions[i] + glm::vec3( 0.0f, 
 																			   sin( time + i ) + 1.0f, 
 																			   0.0f ) ) ;
-				//model = glm::scale( model, glm::vec3( 0.8f ) );
-				model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
+				model = glm::scale( model, glm::vec3( 0.8f ) );
+				//model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
 				shaderG->setMat4( "model", model );
 				//GLuint VAO, VBO, EBO;
 				//quad( &VAO, &VBO, &EBO );
@@ -267,9 +304,9 @@ private:
 			// Send the spotlight.
 			shaderL->setVec3( "spotLight.Position", camPos );
 			shaderL->setVec3( "spotLight.RayDirection", camFront );
-			shaderL->setVec3( "spotLight.Colour", glm::vec3( 1.0f, 0.0f, 0.0f ) );
-			shaderL->setFloat( "spotLight.Cutoff", glm::cos( glm::radians( 12.5 ) ) );
-			shaderL->setFloat( "spotLight.OuterCutoff", glm::cos( glm::radians( 17.5 ) ) );
+			shaderL->setVec3( "spotLight.Colour", glm::vec3( 0.5f, 0.5f, 0.6f ) );
+			shaderL->setFloat( "spotLight.Cutoff", glm::cos( glm::radians( 12.5f ) ) );
+			shaderL->setFloat( "spotLight.OuterCutoff", glm::cos( glm::radians( 17.5f ) ) );
 
 			for( uint16_t i = 0; i < lightPositions.size(); ++i )
 			{
@@ -557,6 +594,9 @@ private:
 		glDeleteBuffers( 1, &cubeVertexBufferObject );
 		glDeleteVertexArrays( 1, &cubeVertexArrayObject );
 
+		glDeleteTextures( 1, &depthMap );
+		glDeleteFramebuffers( 1, &depthFBO );
+
 		glDeleteTextures( 1, &gPosition );
 		glDeleteTextures( 1, &gNormal );
 		glDeleteTextures( 1, &gAlbedoSpec );
@@ -578,7 +618,7 @@ private:
 	void processInput( GLFWwindow* window )
 	{
 
-		float camSpeed = deltaTime * 3.0f;
+		float camSpeed = deltaTime * SPEED;
 
 		// Close the app when pressing the ESC key.
 		if( glfwGetKey( window, GLFW_KEY_ESCAPE ) == GLFW_PRESS )

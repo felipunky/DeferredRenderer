@@ -40,10 +40,12 @@ const int NR_LIGHTS = 30;
 uniform Light lights[NR_LIGHTS];
 uniform vec3 viewPos;
 
-float decay( float Kl, float Kq, float dist )
+float decay( vec3 lightPos, vec3 fragPos, float Kl, float Kq )
 {
 
-    return 1.0 / ( 1.0 + Kl * dist + Kq * dist * dist );
+	float dist = distance( lightPos, fragPos );
+
+	return 1.0 / ( 1.0 + Kl * dist + Kq * ( dist * dist ) );
 
 }
 
@@ -101,7 +103,7 @@ void main()
             // attenuation
 			// Don't forget to calculate the square root of the dist variable,
 			// we have to do so manually as we optimized by skipping it early.
-            float attenuation = decay( lights[i].Linear, lights[i].Quadratic, sqrt( dist ) );
+            float attenuation = decay( lights[i].Position, FragPos, lights[i].Linear ,lights[i].Quadratic );
             diffuse *= attenuation;
             specular *= attenuation;
             lighting += diffuse + specular;
@@ -109,21 +111,40 @@ void main()
     }    
 
 	// SpotLight.
-	vec3 lig = normalize( spotLight.Position - FragPos );
+	/*vec3 lig = normalize( spotLight.Position - FragPos );
 	float dif = max( dot( Normal, lig ), 0.0 );
-	float atte = decay( 0.35, 0.44, length( spotLight.Position - FragPos ) );
+	float atte = decay( lights[0].Linear, lights[0].Quadratic, length( lig ) );
 	vec3 ref = reflect( -lig, Normal );
 
 	float the = max( dot( lig, normalize( -spotLight.RayDirection ) ), 0.0 );
 	float eps = spotLight.Cutoff - spotLight.OuterCuttoff;
 	float inte = clamp( ( the - spotLight.OuterCuttoff ) / eps, 0.0, 1.0 );
 
-	vec3 diff = dif * spotLight.Colour;
-	vec3 spe = spotLight.Colour * pow( max( dot( spotLight.RayDirection, ref ), 0.0 ), 32.0 );
-	diff *= inte * atte;
-	spe  *= inte * atte;
+	vec3 diff = inte * atte * dif * Diffuse * spotLight.Colour;
+	vec3 spe = inte * atte * spotLight.Colour * pow( max( dot( viewDir, ref ), 0.0 ), 32.0 );
+	//diff *= inte;// * atte;
+	//spe  *= inte;// * atte;
 
-	lighting += diff + spe;
+	lighting += diff + spe;*/
 
-    FragColor = vec4(lighting, 1.0);
+	// SpotLight.
+	vec3 lig = normalize( spotLight.Position - FragPos );
+	float the = dot( lig, normalize( -spotLight.RayDirection ) );
+
+	float diff = max( dot( Normal, lig ), 0.0 );
+	vec3 ref = reflect( -lig, Normal );
+	float atte = decay( spotLight.Position, FragPos, 0.09, 0.032 );
+	float e = spotLight.Cutoff - spotLight.OuterCuttoff;
+	float inte = clamp( ( the - spotLight.OuterCuttoff ) / e, 0.0, 1.0 );
+
+	//vec3 amb = inte * atte * objectColours[0];// *0.5 + 0.5 * n.y;
+	vec3 dif = inte * Diffuse * spotLight.Colour * diff;
+	vec3 spe = inte * Specular * spotLight.Colour * pow( max( dot( viewDir, ref ), 0.0 ), 32.0 );
+
+	lighting += dif + spe;
+
+	FragColor = vec4( lighting, 1 );
+	// Cheap and dirty gamma correction.
+    //FragColor = vec4( pow( lighting, vec3( 0.4545 ) ), 1.0 );
+
 }
