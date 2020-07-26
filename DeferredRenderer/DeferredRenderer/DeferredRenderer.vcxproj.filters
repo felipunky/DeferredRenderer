@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{49f678f8-40be-4d11-a9ec-9edd928f147b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -21,5 +24,30 @@
     <ClCompile Include="..\..\..\..\..\..\Libraries\glad\src\glad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="gBuffer.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="gBuffer.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="lightBuffer.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="lightBuffer.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="forward.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="forward.vert">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
