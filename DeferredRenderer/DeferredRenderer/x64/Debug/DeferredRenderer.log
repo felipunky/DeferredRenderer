@@ -1,19 +1,14 @@
-﻿  glad.c
-  main.cpp
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\Shader.h(47,34): warning C4101:  'e': unreferenced local variable
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(78,26): warning C4305:  'initializing': truncation from 'double' to 'const float'
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(79,29): warning C4305:  'initializing': truncation from 'double' to 'const float'
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(261,51): warning C4244:  'argument': conversion from 'double' to 'float', possible loss of data
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(262,60): warning C4244:  'argument': conversion from 'genType' to 'float', possible loss of data
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(262,60): warning C4244:         with
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(262,60): warning C4244:         [
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(262,60): warning C4244:             genType=double
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(262,60): warning C4244:         ]
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(351,13): warning C4244:  'return': conversion from 'double' to 'float', possible loss of data
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(640,17): warning C4244:  '=': conversion from 'double' to 'float', possible loss of data
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(641,17): warning C4244:  '=': conversion from 'double' to 'float', possible loss of data
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(645,17): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(646,17): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(647,16): warning C4244:  '=': conversion from 'double' to 'float', possible loss of data
-D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\DeferredRenderer\main.cpp(648,16): warning C4244:  '=': conversion from 'double' to 'float', possible loss of data
-  DeferredRenderer.vcxproj -> D:\SSS\InstaLODInterview\InstaLODAssignment\HRAssignment-Repository-InstaLOD\DeferredRenderer\x64\Debug\DeferredRenderer.exe
+﻿  main.cpp
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\Shader.h(47,34): warning C4101:  'e': unreferenced local variable
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(78,26): warning C4305:  'initializing': truncation from 'double' to 'const float'
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(79,29): warning C4305:  'initializing': truncation from 'double' to 'const float'
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(271,51): warning C4244:  'argument': conversion from 'double' to 'float', possible loss of data
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(272,56): warning C4244:  'argument': conversion from 'double' to 'float', possible loss of data
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(366,13): warning C4244:  'return': conversion from 'double' to 'float', possible loss of data
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(655,17): warning C4244:  '=': conversion from 'double' to 'float', possible loss of data
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(656,17): warning C4244:  '=': conversion from 'double' to 'float', possible loss of data
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(660,17): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(661,17): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(662,16): warning C4244:  '=': conversion from 'double' to 'float', possible loss of data
+D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\DeferredRenderer\main.cpp(663,16): warning C4244:  '=': conversion from 'double' to 'float', possible loss of data
+  DeferredRenderer.vcxproj -> D:\SSS\InstaLODInterview\InstaLODAssignment\DeferredRenderer\DeferredRenderer\x64\Debug\DeferredRenderer.exe

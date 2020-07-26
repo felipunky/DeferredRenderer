@@ -226,18 +226,28 @@ private:
 			shaderG->use();
 			shaderG->setMat4( "view", view );
 
+			model = glm::mat4( 1.0f );
+			model = glm::scale( model, glm::vec3( 50.0f ) );
+			model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
+			//model = glm::translate( model, glm::vec3( 0.0f, 0.0f, -1.0f ) );
+			shaderG->setMat4( "model", model );
+			GLuint VAO, VBO, EBO;
+			quad( &VAO, &VBO, &EBO );
+
 			for( unsigned int i = 0; i < objectPositions.size(); i++ )
 			{
 
 				// Restart the matrix for each element.
 				model = glm::mat4( 1.0f );
-				model = glm::translate( model, objectPositions[i] + glm::vec3( 0.0f, 0.1 * sin( time + i ), 0.0f ) ) ;
+				model = glm::translate( model, objectPositions[i] + glm::vec3( 0.0f, 
+																			   sin( time + i ) + 1.0f, 
+																			   0.0f ) ) ;
 				//model = glm::scale( model, glm::vec3( 0.8f ) );
 				model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
-				shaderG->setMat4("model", model);
-				GLuint VAO, VBO, EBO;
-				quad( &VAO, &VBO, &EBO );
-				//renderCube(); 
+				shaderG->setMat4( "model", model );
+				//GLuint VAO, VBO, EBO;
+				//quad( &VAO, &VBO, &EBO );
+				renderCube(); 
 
 			}
 
@@ -257,16 +267,20 @@ private:
 			// Send the spotlight.
 			shaderL->setVec3( "spotLight.Position", camPos );
 			shaderL->setVec3( "spotLight.RayDirection", camFront );
-			shaderL->setVec3( "spotLight.Colour", glm::cos( glm::vec3( 1.0f, 0.0f, 0.0f ) ) );
+			shaderL->setVec3( "spotLight.Colour", glm::vec3( 1.0f, 0.0f, 0.0f ) );
 			shaderL->setFloat( "spotLight.Cutoff", glm::cos( glm::radians( 12.5 ) ) );
-			shaderL->setFloat( "spotLight.OuterCutoff", glm::radians( 17.5 ) );
+			shaderL->setFloat( "spotLight.OuterCutoff", glm::cos( glm::radians( 17.5 ) ) );
 
 			for( uint16_t i = 0; i < lightPositions.size(); ++i )
 			{
 			
-				lightPositions[i] = glm::vec3( 5.0f * sin( time * 0.1f + i ), 1.0f, 5.0f * cos( 0.2f * time + i ) );
+				// We are reusing so only compute once.
+				float c = 1.0f + 1.2f * i;
+				float t = time * 0.5f + i;
+
+				lightPositions[i] = glm::vec3( c * sin( t ), 1.0f, c * cos( t ) );
 				shaderL->setVec3("lights[" + std::to_string(i) + "].Position", lightPositions[i]);
-				shaderL->setVec3("lights[" + std::to_string(i) + "].Color", lightColours[i]);
+				shaderL->setVec3("lights[" + std::to_string(i) + "].Colour", lightColours[i]);
 				// update attenuation parameters and calculate radius
 				shaderL->setFloat("lights[" + std::to_string(i) + "].Linear", linear);
 				shaderL->setFloat("lights[" + std::to_string(i) + "].Quadratic", quadratic);
@@ -321,10 +335,11 @@ private:
 	void initGeometry()
 	{
 
-		for( float x = -5.0; x < 5.0; x += 1.0 )
+		// Grid of geo.
+		for( float x = -20.0; x < 20.0; x += 5.0 )
 		{
 
-			for( float y = -5.0; y < 5.0; y += 1.0 )
+			for( float y = -20.0; y < 20.0; y += 5.0 )
 			{
 			
 				objectPositions.push_back( glm::vec3( x, sin( x + y ) * 0.1f, y ) );
@@ -357,11 +372,11 @@ private:
 		std::vector<GLfloat> vertices =
 		{
 
-			// positions          // colors           // texCoords  // normals
-			 0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   0.0, 0.0, 1.0f, // top right
-			 0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   0.0, 0.0, 1.0f, // bottom right
-			-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   0.0, 0.0, 1.0f, // bottom left
-			-0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f,   0.0, 0.0, 1.0f  // top left 
+			// positions         // normals       // texCoords  
+			 0.5f,  0.5f, 0.0f,  0.0, 0.0, 1.0f,  1.0f, 1.0f,    // top right
+			 0.5f, -0.5f, 0.0f,  0.0, 0.0, 1.0f,  1.0f, 0.0f,    // bottom right
+			-0.5f, -0.5f, 0.0f,  0.0, 0.0, 1.0f,  0.0f, 0.0f,    // bottom left
+			-0.5f,  0.5f, 0.0f,  0.0, 0.0, 1.0f,  0.0f, 1.0f    // top left 
 
 			// To compute the normals for a quad we only need to calculate the vector from each point 
 			// to each of it's neighbors:
@@ -403,27 +418,24 @@ private:
 
 		// Bind the EBO.
 		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, *elementBufferObject );
-		glBufferData( GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), 
+		glBufferData( GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof( GLuint ), indices.data(), 
 					  GL_STATIC_DRAW );
 
+		// Make sure our attributes match those of other primitives for our G-Buffer pass!
+
 		// Position attribute.
-		glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 11 * sizeof( GLfloat ), ( void* )( 0 ) );
+		glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof( GLfloat ), ( void* )( 0 ) );
 		glEnableVertexAttribArray( 0 );
 
-		// Colour attribute.
-		glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 11 * sizeof( GLfloat ), ( void* )
-																				 ( 3 * sizeof( GLfloat ) ) );
+		// Normal attribute.
+		glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof( GLfloat ), ( void* )
+														( 3 * sizeof( GLfloat ) ) );
 		glEnableVertexAttribArray( 1 );
 
 		// Texture Coords attribute.
-		glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, 11 * sizeof( GLfloat ), ( void* )
-			(											 6 * sizeof( GLfloat ) ) );
+		glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof( GLfloat ), ( void* )
+														( 6 * sizeof( GLfloat ) ) );
 		glEnableVertexAttribArray( 2 );
-
-		// Normal attribute.
-		glVertexAttribPointer( 3, 3, GL_FLOAT, GL_FALSE, 11 * sizeof( GLfloat ), ( void* )
-															( 8 * sizeof( GLfloat ) ) );
-		glEnableVertexAttribArray( 3 );
 
 		glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );
 
@@ -513,10 +525,13 @@ private:
 			// link vertex attributes
 			glBindVertexArray(cubeVertexArrayObject);
 			glEnableVertexAttribArray(0);
+			// Position attribute.
 			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 			glEnableVertexAttribArray(1);
+			// Normal attribute.
 			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 			glEnableVertexAttribArray(2);
+			// Texture coordinates attribute.
 			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindVertexArray(0);

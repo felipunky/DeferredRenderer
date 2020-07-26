@@ -22,13 +22,16 @@ struct SpotLight
 uniform SpotLight spotLight;
 
 // Same goes for our point lights.
-struct Light {
+struct Light 
+{
+
     vec3 Position;
-    vec3 Color;
+    vec3 Colour;
     
     float Linear;
     float Quadratic;
     float Radius;
+
 };
 
 // Unfortunately we can't send the number of lights as a uniform to get this value 
@@ -37,10 +40,10 @@ const int NR_LIGHTS = 30;
 uniform Light lights[NR_LIGHTS];
 uniform vec3 viewPos;
 
-float decay( Light light, float distance )
+float decay( float Kl, float Kq, float dist )
 {
 
-    return 1.0 / ( 1.0 + light.Linear * distance + light.Quadratic * distance * distance );
+    return 1.0 / ( 1.0 + Kl * dist + Kq * dist * dist );
 
 }
 
@@ -60,6 +63,9 @@ void main()
     vec3 Diffuse = texture( gAlbedoSpec, TexCoords ).rgb;
     float Specular = texture( gAlbedoSpec, TexCoords ).a;
     
+	// Make sure that we do not colour not geometric stuff.
+	if( Normal == vec3( 0 ) ) discard;
+
     // Normal lighting calculations.
     vec3 lighting  = Diffuse * 0.1; // TODO: Find a better way of doing this.
     vec3 viewDir  = normalize( viewPos - FragPos );
@@ -76,16 +82,26 @@ void main()
 		if( dist < lights[i].Radius * lights[i].Radius )
 		{
             // diffuse
-            vec3 lightDir = normalize(lights[i].Position - FragPos);
-            vec3 diffuse = max( dot( Normal, lightDir ), 0.0 ) * Diffuse * lights[i].Color;
+			// http://learnwebgl.brown37.net/09_lights/lights_diffuse.html
+			// The dot gives a scalar from two vectors (d) which corresponds to the projection (multiplying B * d) of A into
+			// B. This relation between two vectors helps us determine whether or not the light position is pointing towards
+			// the normal or if we are behind (d bigger or smaller than 90, we use a max to make sure we are not taking 
+			// diffuse lighting away!) and how much light the surface is getting from the diffuse term. 
+			//                 ^
+			//                /|
+			//            A  / |
+			//              /  |     B
+			//             ---------------->
+            vec3 lightDir = normalize( lights[i].Position - FragPos );
+            vec3 diffuse = max( dot( Normal, lightDir ), 0.0 ) * Diffuse * lights[i].Colour;
             // specular
             vec3 halfwayDir = normalize( lightDir + viewDir );  
             float spec = pow( max( dot( Normal, halfwayDir ), 0.0 ), 16.0 );
-            vec3 specular = lights[i].Color * spec * Specular;
+            vec3 specular = lights[i].Colour * spec * Specular;
             // attenuation
 			// Don't forget to calculate the square root of the dist variable,
 			// we have to do so manually as we optimized by skipping it early.
-            float attenuation = decay( lights[i], sqrt( dist ) );
+            float attenuation = decay( lights[i].Linear, lights[i].Quadratic, sqrt( dist ) );
             diffuse *= attenuation;
             specular *= attenuation;
             lighting += diffuse + specular;
@@ -95,7 +111,7 @@ void main()
 	// SpotLight.
 	vec3 lig = normalize( spotLight.Position - FragPos );
 	float dif = max( dot( Normal, lig ), 0.0 );
-	float atte = decay( lights[0], length( spotLight.Position - FragPos ) );
+	float atte = decay( 0.35, 0.44, length( spotLight.Position - FragPos ) );
 	vec3 ref = reflect( -lig, Normal );
 
 	float the = max( dot( lig, normalize( -spotLight.RayDirection ) ), 0.0 );
