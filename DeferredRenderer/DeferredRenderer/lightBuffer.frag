@@ -150,7 +150,7 @@ void main()
 
 	lighting += dif + spe;
 
-	FragColor = vec4( LinearizeDepth( Normal.w ) );
+	FragColor = vec4( lighting * Normal.w, 1 );
 	// Cheap and dirty gamma correction.
     //FragColor = vec4( pow( lighting, vec3( 0.4545 ) ), 1.0 );
 

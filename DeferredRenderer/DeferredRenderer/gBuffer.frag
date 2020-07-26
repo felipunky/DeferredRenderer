@@ -21,8 +21,7 @@ in vec4 FragPosLightSpace;
 uniform sampler2D shadowMap;
 
 // This corresponds to the camera.
-uniform vec3 rayPos;
-uniform vec3 rayDirection;
+uniform vec3 lightPos;
 
 float ShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -34,30 +33,49 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     float closestDepth = texture(shadowMap, projCoords.xy).r; 
     // get depth of current fragment from light's perspective
     float currentDepth = projCoords.z;
+    // calculate bias (based on depth map resolution and slope)
+    vec3 normal = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
     // check whether current frag pos is in shadow
-    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
-
+    // float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+    // PCF
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+            shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;        
+        }    
+    }
+    shadow /= 9.0;
+    
+    // keep the shadow at 0.0 when outside the far_plane region of the light's frustum.
+    if(projCoords.z > 1.0)
+        shadow = 0.0;
+        
     return shadow;
 }
-
 
 void main()
 {    
     // Send the fragment's position.
     gPosition = FragPos;
     // And the normals (per fragment).
-    gNormal.xyz = normalize( Normal ).xyz;
-	gNormal.w = ShadowCalculation( FragPosLightSpace );
+    gNormal.xyz = normalize( Normal.xyz );
+	gNormal.w = 1.0 - ShadowCalculation( FragPosLightSpace );
     // Ideal world this would be something better, but if we have proper
 	// normals for our geometry we would be able to get something good 
 	// enough from a colour defined here.
-	vec3 lig = normalize( vec3( 1.0, 0.8, 0.6 ) - FragPos ); // Ligth source.
+	/*vec3 lig = normalize( vec3( 1.0, 0.8, 0.6 ) - FragPos ); // Ligth source.
 	float dif = max( dot( lig, gNormal.xyz ), 0.0 );
 
 	vec3 diff = dif * vec3( 1.0 );
 
 	vec3 ref = reflect( lig, gNormal.xyz );
-	float spe = pow( max( dot( rayDirection, ref ), 0.0 ), 32.0 );
+	float spe = pow( max( dot( rayDirection, ref ), 0.0 ), 32.0 );*/
 
     gAlbedoSpec.rgb = vec3( 0.5 );//vec3( Normal * 0.5 + 0.5 );
     // We are using the alpha channel of the gAlbedoSpec vec3 to store 

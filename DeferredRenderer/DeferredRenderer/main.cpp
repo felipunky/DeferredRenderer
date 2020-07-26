@@ -28,7 +28,7 @@ public:
 	{
 
 		initWindow();
-		//initShaders();
+		setupDepth();
 		setupGBuffer();
 		initGeometry();
 		renderLoop();
@@ -74,7 +74,7 @@ private:
 	// User interaction.
 	// OpenGL is right handed so the last component corresponds to move forward/backwards.
 	const float SPEED = 5.0f;
-	glm::vec3 camPos = glm::vec3( 0.0f, 2.0f, 3.0f ); 
+	glm::vec3 camPos = glm::vec3( -3.0f, 2.0f, 3.0f ); 
 	glm::vec3 camFront = glm::vec3( 0.0f, 0.0f, -1.0f );
 	glm::vec3 camUp = glm::vec3( 0.0f, 1.0f, 0.0f );
 	// Mouse rotation globals.
@@ -94,6 +94,11 @@ private:
 	const float constant = 1.0;
 	const float linear = 0.7;
 	const float quadratic = 1.8;
+	// Spotlight position.
+	glm::vec3 lightPos = glm::vec3( -4.5f, 3.0f, -1.0f );
+	glm::vec3 lightDir = glm::normalize( glm::vec3( 0.5f, 1.0f, 3.0f ) - lightPos );
+	glm::vec3 lightCol = glm::vec3( 1.0f );
+
 	std::vector<glm::vec3> lightPositions, lightColours;
 
 	// Objects.
@@ -201,8 +206,10 @@ private:
 					  GL_FLOAT, NULL );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+		float border[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		glTexParameterfv( GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border );
 		glBindFramebuffer( GL_FRAMEBUFFER, depthFBO );
 		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0 );
 		glDrawBuffer( GL_NONE ); 
@@ -243,7 +250,7 @@ private:
 		
 		float nearPlane = 1.0f, farPlane = 7.5;
 
-		glm::mat4 lightProj = glm::ortho( -10.0f, 10.0f, -10.0f, 10.0f, nearPlane, farPlane );
+		glm::mat4 lightProj = projection;//glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, nearPlane, farPlane);
 
 		while( !glfwWindowShouldClose( window ) )
 		{
@@ -263,8 +270,11 @@ private:
 			glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
 			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 			
+			// Create the camera (eye).
+			glm::mat4 view = glm::lookAt( camPos, camPos + camFront, camUp );
+
 			// Render the shadow map.
-			glm::mat4 lightView = glm::lookAt( camPos, glm::vec3( 0.0f ), glm::vec3( 0.0f, 1.0f, 0.0f ) );
+			glm::mat4 lightView = glm::lookAt( lightPos, lightPos + lightDir, glm::vec3( 0.0f, 1.0f, 0.0f ) );;
 			glm::mat4 lightSpace = lightProj * lightView;
 			shaderShadow->use();
 			shaderShadow->setMat4( "lightSpaceMatrix", lightSpace );
@@ -279,11 +289,10 @@ private:
 			renderScene( shaderShadow );
 			glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
+			// Back to our window's size.
 			glViewport( 0, 0, WIDTH, HEIGHT );
 			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-			// Create the camera (eye).
-			glm::mat4 view = glm::lookAt( camPos, camPos + camFront, camUp );
 			// Initialize the model matrix.
 			model = glm::mat4( 1.0f );
 
@@ -299,8 +308,8 @@ private:
 			model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
 			model = glm::translate( model, glm::vec3( 0.0f, 0.0f, -0.03f ) );
 			shaderG->setMat4( "model", model );
-			shaderG->setVec3( "rayOrigin", camPos );
-			shaderG->setVec3( "rayDirection", camFront );
+			shaderG->setVec3( "lightPos", lightPos );
+			//shaderG->setVec3( "rayDirection", camFront );
 			shaderG->setMat4( "lightSpaceMatrix", lightSpace );
 			glActiveTexture( GL_TEXTURE0 );
 			glBindTexture( GL_TEXTURE_2D, depthMap );
@@ -321,9 +330,9 @@ private:
 			glBindTexture( GL_TEXTURE_2D, gAlbedoSpec );
 
 			// Send the spotlight.
-			shaderL->setVec3( "spotLight.Position", camPos );
-			shaderL->setVec3( "spotLight.RayDirection", camFront );
-			shaderL->setVec3( "spotLight.Colour", glm::vec3( 0.5f, 0.5f, 0.6f ) );
+			shaderL->setVec3( "spotLight.Position", lightPos );
+			shaderL->setVec3( "spotLight.RayDirection", lightDir );
+			shaderL->setVec3( "spotLight.Colour", lightCol );
 			shaderL->setFloat( "spotLight.Cutoff", glm::cos( glm::radians( 12.5f ) ) );
 			shaderL->setFloat( "spotLight.OuterCutoff", glm::cos( glm::radians( 17.5f ) ) );
 
@@ -363,6 +372,13 @@ private:
 			// 3rd pass, through a forward render add lights representation to the scene.
 			shaderF->use();
 			shaderF->setMat4( "view", view );
+
+			model = glm::mat4( 1.0f );
+			model = glm::translate( model, lightPos );
+			model = glm::scale( model, glm::vec3( 0.2f ) );
+			shaderF->setMat4( "model", model );
+			shaderF->setVec3( "lightColour", lightCol );
+			renderCube();
 
 			for( uint16_t i = 0; i < lightPositions.size(); ++i )
 			{
