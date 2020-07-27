@@ -96,8 +96,8 @@ private:
 	const float quadratic = 1.8;
 	// Spotlight position.
 	// Lights that go in a direction similar to dawn are more cinematic!
-	glm::vec3 lightPos = glm::vec3( 20.5f, 2.5f, 2.5f );
-	glm::vec3 lightDir = glm::normalize( glm::vec3( 3.5f, 2.0f, 3.0f ) - lightPos );
+	glm::vec3 lightPos = glm::vec3( 0.0f, 1.5f, 2.5f );
+	glm::vec3 lightDir = glm::vec3( -10.0f, -0.5f, 1.5f ) - lightPos;
 	glm::vec3 lightCol = glm::vec3( 1.0f );
 
 	std::vector<glm::vec3> lightPositions, lightColours;
@@ -251,10 +251,11 @@ private:
 		
 		//float nearPlane = 0.1f, farPlane = 20.5f;
 
+		// The perspective projection has to have a ratio of 1.0f, apparently.
 		// https://forums.raywenderlich.com/t/chapter-14-spotlight-shadow-map/60775/3
-		glm::mat4 lightProj = glm::perspective( glm::radians( 70.0f ), 1.0f,
+		glm::mat4 lightProj = glm::perspective( glm::radians( 75.0f ), 1.0f,
 												0.1f, 100.0f
-												);// glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, nearPlane, farPlane);
+												);/// glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, nearPlane, farPlane);
 
 		while( !glfwWindowShouldClose( window ) )
 		{
@@ -277,13 +278,19 @@ private:
 			// Create the camera (eye).
 			glm::mat4 view = glm::lookAt( camPos, camPos + camFront, camUp );
 
+			// Shadow Map
+			// To be able to render the shadow map, we are going to pre-render the scene from the light (in 
+			// this case a spot light) and save the result to the alpha component of the gNormal texture,
+			// we will later retrieve (during the light pass) this value to multiply our final colour to get 
+			// our shadows.
 			// Render the shadow map.
 			// This is realtime so why not?
 			// Calculate a vector from the parametric equation of a circle so that our spotlight can be directed
 			// radially.
-			// Uncomment the following lines for moving lights!
-			//lightDir = glm::vec3( 10.f * sin( time * 0.3 ), 0.0f, 10.0f * cos( time * 0.3 ) ) - lightPos;
+			// Uncomment the following lines for a moving spotlight.
+			//lightDir -= glm::vec3( 1.f * sin( time * 0.8 ), 0.0f, 1.0f * cos( time * 0.8 ) );
 			//lightDir = glm::normalize( lightDir );
+			lightDir = camFront;
 			glm::mat4 lightView = glm::lookAt( lightPos, lightPos + lightDir, glm::vec3( 0.0f, 1.0f, 0.0f ) );;
 			glm::mat4 lightSpace = lightProj * lightView;
 			shaderShadow->use();
@@ -313,13 +320,9 @@ private:
 			shaderG->use();
 			shaderG->setMat4( "view", view );
 
-			model = glm::mat4( 1.0f );
-			model = glm::scale( model, glm::vec3( 50.0f ) );
-			model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
-			model = glm::translate( model, glm::vec3( 0.0f, 0.0f, -0.03f ) );
-			shaderG->setMat4( "model", model );
+			//shaderG->setMat4( "model", model );
 			shaderG->setVec3( "lightPos", lightPos );
-			//shaderG->setVec3( "rayDirection", camFront );
+			shaderG->setFloat( "time", time );
 			shaderG->setMat4( "lightSpaceMatrix", lightSpace );
 			glActiveTexture( GL_TEXTURE0 );
 			glBindTexture( GL_TEXTURE_2D, depthMap );
@@ -327,6 +330,8 @@ private:
 			renderScene( shaderG );
 
 			glBindFramebuffer( GL_FRAMEBUFFER, 0 ); // Unbind.
+
+
 
 			// 2nd pass, this is when the lighting is calculated by the lightBuffer.frag shader.
 			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -418,8 +423,6 @@ private:
 	void renderScene( Shader* shader )
 	{
 
-		quad( &quadVertexArrayObject, &quadVertexBufferObject, &quadElementBufferObject );
-
 		for( unsigned int i = 0; i < objectPositions.size(); i++ )
 		{
 
@@ -436,6 +439,15 @@ private:
 			renderCube(); 
 
 		}
+
+		
+		model = glm::mat4( 1.0f );
+		model = glm::scale( model, glm::vec3( 40.0f ) );
+		model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
+		model = glm::translate( model, glm::vec3( 0.0f, 0.0f, -0.05f ) );
+		shader->setMat4( "model", model );
+		//renderQuad();
+		quad( &quadVertexArrayObject, &quadVertexBufferObject, &quadElementBufferObject );
 
 	}
 
@@ -654,19 +666,24 @@ private:
 
 		// Apparently freeing resources is something that the driver must do!
 		// https://community.khronos.org/t/vao-deleting-causes-strange-memory-problems/74691
+		// Free the quad.
 		glDeleteBuffers( 1, &quadVertexBufferObject );
 		glDeleteBuffers( 1, &quadElementBufferObject );
 		glDeleteVertexArrays( 1, &quadVertexArrayObject );
 
+		// Free the screen quad.
 		glDeleteBuffers( 1, &screenQuadVertexBufferObject );
 		glDeleteVertexArrays( 1, &screenQuadVertexArrayObject );
 
+		// Free the cube.
 		glDeleteBuffers( 1, &cubeVertexBufferObject );
 		glDeleteVertexArrays( 1, &cubeVertexArrayObject );
 
+		// Free the depth map.
 		glDeleteTextures( 1, &depthMap );
 		glDeleteFramebuffers( 1, &depthFBO );
 
+		// Free the GBuffer.
 		glDeleteTextures( 1, &gPosition );
 		glDeleteTextures( 1, &gNormal );
 		glDeleteTextures( 1, &gAlbedoSpec );
@@ -747,6 +764,35 @@ private:
 		{
 
 			camPos += glm::normalize( glm::cross( camFront, camUp ) ) * camSpeed;
+
+		}
+
+		// SpotLight.
+		if( glfwGetKey( window, GLFW_KEY_UP ) == GLFW_PRESS )
+		{
+
+			lightPos += camUp * camSpeed;
+
+		}
+
+		if( glfwGetKey( window, GLFW_KEY_DOWN ) == GLFW_PRESS )
+		{
+
+			lightPos -= camUp * camSpeed;
+
+		}
+
+		if( glfwGetKey( window, GLFW_KEY_LEFT ) == GLFW_PRESS )
+		{
+
+			lightPos -= glm::normalize( glm::cross( camFront, camUp ) ) * camSpeed;
+
+		}
+
+		if( glfwGetKey( window, GLFW_KEY_RIGHT ) == GLFW_PRESS )
+		{
+
+			lightPos += glm::normalize( glm::cross( camFront, camUp ) ) * camSpeed;
 
 		}
 

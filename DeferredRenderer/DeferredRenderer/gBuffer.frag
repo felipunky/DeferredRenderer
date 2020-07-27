@@ -22,6 +22,7 @@ uniform sampler2D shadowMap;
 
 // This corresponds to the camera.
 uniform vec3 lightPos;
+uniform float time;
 
 float ShadowBias( float d )
 {
@@ -46,28 +47,25 @@ float ShadowCalculation(vec4 fragPosLightSpace)
 	float d = dot(normal, lightDir);
 
 	float shadow = 0.0;
-	//if( d < cos( radians( 12.5 ) ) )
-	{
 
-		float bias = ShadowBias( d );
-		// check whether current frag pos is in shadow
-		// float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
-		// PCF
-		vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
-		for(int x = -1; x <= 1; ++x)
+	float bias = ShadowBias( d );
+	// check whether current frag pos is in shadow
+	// float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+	// PCF
+	vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+	for(int x = -1; x <= 1; ++x)
+	{
+		for(int y = -1; y <= 1; ++y)
 		{
-			for(int y = -1; y <= 1; ++y)
-			{
-				float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
-				shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;        
-			}    
-		}
-		shadow /= 9.0;
-    
-		// keep the shadow at 0.0 when outside the far_plane region of the light's frustum.
-		if(projCoords.z > 1.0)
-			shadow = 0.0;
+			float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+			shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;        
+		}    
 	}
+	shadow /= 9.0;
+    
+	// keep the shadow at 0.0 when outside the far_plane region of the light's frustum.
+	if(projCoords.z > 1.0)
+		shadow = 0.0;
         
     return shadow;
 }
@@ -82,17 +80,24 @@ void main()
     // Ideal world this would be something better, but if we have proper
 	// normals for our geometry we would be able to get something good 
 	// enough from a colour defined here.
-	/*vec3 lig = normalize( vec3( 1.0, 0.8, 0.6 ) - FragPos ); // Ligth source.
+	// Simulate some basic lighting to keep the scene from being too boring.
+	// Uncomment to play with this idea, it may work?
+	/*vec3 lig = normalize( vec3( 10.0, 4.0, 2.0 ) - FragPos ); // Ligth source.
+	vec3 rayDirection = normalize( vec3( 0 ) - lig );
 	float dif = max( dot( lig, gNormal.xyz ), 0.0 );
 
-	vec3 diff = dif * vec3( 1.0 );
+	vec3 diff = dif * vec3( 0.3, 0.25, 0.22 );
 
 	vec3 ref = reflect( lig, gNormal.xyz );
-	float spe = pow( max( dot( rayDirection, ref ), 0.0 ), 32.0 );*/
+	float spe = pow( max( dot( rayDirection, ref ), 0.0 ), 64.0 );
 
+	gAlbedoSpec.rgb = diff;
+	gAlbedoSpec.a = spe;*/
+
+	// Otherwise simply define a colour of your liking and be done!
     gAlbedoSpec.rgb = vec3( 0.5 );//vec3( Normal * 0.5 + 0.5 );
     // We are using the alpha channel of the gAlbedoSpec vec3 to store 
 	// our specular world, again in an ideal world this would be a 
 	// pre-computed specular map. 
-    gAlbedoSpec.a = 10.0;
+    gAlbedoSpec.a = 1.0;
 }

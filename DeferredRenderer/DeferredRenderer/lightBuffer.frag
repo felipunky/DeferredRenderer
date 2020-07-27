@@ -149,8 +149,10 @@ void main()
 	vec3 spe = inte * Specular * spotLight.Colour * pow( max( dot( viewDir, ref ), 0.0 ), 32.0 );
 
 	lighting += dif + spe;
+	// Our shadows.
+	lighting *= Normal.w;
 
-	FragColor = vec4( lighting * Normal.w, 1 );
+	FragColor = vec4( lighting, 1 );
 	// Cheap and dirty gamma correction.
     //FragColor = vec4( pow( lighting, vec3( 0.4545 ) ), 1.0 );
 
