@@ -29,7 +29,6 @@ public:
 
 		initWindow();
 		setupDepth();
-		setupGBuffer();
 		initGeometry();
 		renderLoop();
 
@@ -55,6 +54,8 @@ private:
 	Shader* shaderF;
 	// Shadow mapping pass.
 	Shader* shaderShadow;
+	// Decals.
+	Shader* shaderD;
 
 	// GBuffer ids.
 	// FBO.
@@ -102,6 +103,14 @@ private:
 
 	std::vector<glm::vec3> lightPositions, lightColours;
 
+	// Decals.
+	// ID.
+	unsigned int texture1;
+	// FBO.
+	unsigned int gBufferD;
+	// Textures.
+	unsigned int gPositionD, gNormalD, gAlbedoSpecD;
+
 	// Objects.
 	std::vector<glm::vec3> objectPositions;
 
@@ -148,34 +157,35 @@ private:
 
 	}
 
-	void setupGBuffer()
+	void setupGBuffer( unsigned int* gBuffer, unsigned int* gPosition, unsigned int* gNormal, 
+					   unsigned int* gAlbedoSpec )
 	{
 
 		// This is a very memory consuming way of implementing a GBuffer it is possible to calculate it
 		// through the depth buffer. Maybe later.
-		glGenFramebuffers( 1, &gBuffer );
-		glBindFramebuffer( GL_FRAMEBUFFER, gBuffer );
+		glGenFramebuffers( 1, gBuffer );
+		glBindFramebuffer( GL_FRAMEBUFFER, *gBuffer );
 		// position color buffer
-		glGenTextures( 1, &gPosition );
-		glBindTexture( GL_TEXTURE_2D, gPosition );
+		glGenTextures( 1, gPosition );
+		glBindTexture( GL_TEXTURE_2D, *gPosition );
 		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, WIDTH, HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0 );
+		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *gPosition, 0 );
 		// normal color buffer
-		glGenTextures( 1, &gNormal );
-		glBindTexture( GL_TEXTURE_2D, gNormal );
+		glGenTextures( 1, gNormal );
+		glBindTexture( GL_TEXTURE_2D, *gNormal );
 		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, WIDTH, HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0 );
+		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, *gNormal, 0 );
 		// color + specular color buffer
-		glGenTextures( 1, &gAlbedoSpec );
-		glBindTexture( GL_TEXTURE_2D, gAlbedoSpec );
+		glGenTextures( 1, gAlbedoSpec );
+		glBindTexture( GL_TEXTURE_2D, *gAlbedoSpec );
 		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0 );
+		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, *gAlbedoSpec, 0 );
 		// tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
 		unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
 		glDrawBuffers( 3, attachments );
@@ -229,25 +239,53 @@ private:
 		shaderG = &Shader( "gBuffer.vert", "gBuffer.frag" );			// Watchout for the order..... 
 		shaderL = &Shader( "lightBuffer.vert", "lightBuffer.frag" );	// no, it's not a compiler bug!
 		shaderF = &Shader( "forward.vert", "forward.frag" );
-		
-		// ShadowMapping.
-		shaderShadow = &Shader( "shadowMapping.vert", "shadowMapping.frag" );
-
-		shaderL->use();
-		shaderL->setInt( "gPosition", 0 );
-		shaderL->setInt( "gNormal", 1 );
-		shaderL->setInt( "gAlbedoSpec", 2 );
 
 		// No need to compute this every frame as the FOV stays always the same.
 		glm::mat4 projection = glm::perspective( glm::radians( 45.0f ), ( float ) WIDTH / ( float ) HEIGHT,
 												 0.1f, 100.0f
 												);
+
+		//shaderD->createTexture( &texture1, "Assets/NotOurHome.png", "texture1", 3 );
+		
+		// ShadowMapping.
+		shaderShadow = &Shader( "shadowMapping.vert", "shadowMapping.frag" );
+
+		setupGBuffer( &gBuffer, &gPosition, &gNormal, &gAlbedoSpec );
 		// Now send it to the shaders.
 		shaderG->use();
+		shaderG->setInt( "gPosition", 0 );
+		shaderG->setInt( "gNormal", 1 );
+		shaderG->setInt( "gAlbedoSpec", 2 );
 		shaderG->setMat4( "projection", projection );
+		//shaderG->createTexture( &texture1, "Assets/NotOurHome.png", "texture1", 3 );
+		//shaderG->createTexture( &texture1, "Assets/NotOurHome.png", "texture1", 1 );
+
+		setupGBuffer( &gBufferD, &gPositionD, &gNormalD, &gAlbedoSpecD );
+		// Decals.
+		shaderD = &Shader( "decal.vert", "decal.frag" );
+
+		shaderD->use();
+		shaderD->setInt( "gPosition", 0 );
+		shaderD->setInt( "gNormal", 1 );
+		shaderD->setInt( "gAlbedoSpec", 2 );
+		shaderD->setMat4( "projection", projection );
+
+		/*shaderD->setInt( "outGPosition", 3 );
+		shaderD->setInt( "outGNormal", 4 );
+		shaderD->setInt( "outAlbedoSpec", 5 );
+		shaderD->createTexture( &texture1, "Assets/NotOurHome.png", "texture1", 6 );*/
+		
+
+		// Light pass.
+		shaderL->use();
+		shaderL->setInt( "gPosition", 0 );
+		shaderL->setInt( "gNormal", 1 );
+		shaderL->setInt( "gAlbedoSpec", 2 );
+		//shaderL->createTexture( &texture1, "Assets/NotOurHome.png", "texture1", 3 );
 
 		shaderF->use();
 		shaderF->setMat4( "projection", projection );
+		shaderF->createTexture( &texture1, "Assets/NotOurHome.png", "texture1", 0 ); 
 		
 		//float nearPlane = 0.1f, farPlane = 20.5f;
 
@@ -322,16 +360,46 @@ private:
 
 			//shaderG->setMat4( "model", model );
 			shaderG->setVec3( "lightPos", lightPos );
+			shaderG->setVec3( "viewPos", camPos );
 			shaderG->setFloat( "time", time );
 			shaderG->setMat4( "lightSpaceMatrix", lightSpace );
 			glActiveTexture( GL_TEXTURE0 );
 			glBindTexture( GL_TEXTURE_2D, depthMap );
-
-			renderScene( shaderG );
+			renderScene( shaderG );			
+			//model = glm::mat4( 1.0f );
+			//model = glm::scale( model, glm::vec3( 0.5f ) );
+			//model = glm::translate( model, glm::vec3( 0.0f, -0.5f, 0.0f ) );
+			//renderCube();
+			//shaderG->setMat4( "decal", model );
 
 			glBindFramebuffer( GL_FRAMEBUFFER, 0 ); // Unbind.
 
+			// Decal pass.
+			// Making me crazy... Not working yet!
+			/*glBindFramebuffer( GL_FRAMEBUFFER, gBufferD );
+			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+			// Don't forget to activate, set the shader's index when adding uniforms!
+			shaderD->use();
+			shaderD->setMat4( "view", view );
 
+			model = glm::mat4( 1.0f );
+			model = glm::scale( model, glm::vec3( 1.0f ) );
+			model = glm::translate( model, glm::vec3( 2.5f, -2.0f, 0.0f ) );
+			//model = glm::translate( model, glm::vec3( 2.5f, -2.0f, 0.0f ) );
+			//model = glm::rotate( model,  )
+			shaderD->setMat4( "model", model );
+			shaderD->setVec3( "lightColour", glm::vec3( 0.0f, 0.0f, 1.0f ) );
+			glActiveTexture( GL_TEXTURE0 );
+			glBindTexture( GL_TEXTURE_2D, gPosition );
+			glActiveTexture( GL_TEXTURE1 );
+			glBindTexture( GL_TEXTURE_2D, gNormal );
+			glActiveTexture( GL_TEXTURE2 );
+			glBindTexture( GL_TEXTURE_2D, gAlbedoSpec );
+			//renderScene( shaderD );	
+			renderCube();
+			//renderScene( shaderD );	
+
+			glBindFramebuffer( GL_FRAMEBUFFER, 0 ); // Unbind.*/
 
 			// 2nd pass, this is when the lighting is calculated by the lightBuffer.frag shader.
 			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -343,6 +411,8 @@ private:
 			glBindTexture( GL_TEXTURE_2D, gNormal );
 			glActiveTexture( GL_TEXTURE2 );
 			glBindTexture( GL_TEXTURE_2D, gAlbedoSpec );
+			/*glActiveTexture( GL_TEXTURE2 ); 
+			glBindTexture( GL_TEXTURE_2D, gAlbedoSpecD );*/
 
 			// Send the spotlight.
 			shaderL->setVec3( "spotLight.Position", lightPos );
@@ -383,6 +453,18 @@ private:
 			glBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 );
 			glBlitFramebuffer( 0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST );
 			glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+
+			//shaderD->use();
+			//shaderD->setMat4( "view", view );
+
+			//model = glm::mat4( 1.0f );
+			//model = glm::scale( model, glm::vec3( 1.0f ) );
+			//model = glm::translate( model, glm::vec3( 2.5f, -2.0f, 0.0f ) );
+			////model = glm::rotate( model,  )
+			//shaderD->setMat4( "model", model );
+			//shaderD->setVec3( "lightColour", glm::vec3( 0.0f, 0.0f, 1.0f ) );
+			//renderCube();
+
 
 			// 3rd pass, through a forward render add lights representation to the scene.
 			shaderF->use();
@@ -688,6 +770,13 @@ private:
 		glDeleteTextures( 1, &gNormal );
 		glDeleteTextures( 1, &gAlbedoSpec );
 		glDeleteFramebuffers( 1, &gBuffer );
+
+		// Free the decals.
+		glDeleteTextures( 1, &texture1 );
+		glDeleteTextures( 1, &gPositionD );
+		glDeleteTextures( 1, &gNormalD );
+		glDeleteTextures( 1, &gAlbedoSpecD );
+		glDeleteFramebuffers( 1, &gBufferD );
 
 	}
 

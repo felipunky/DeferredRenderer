@@ -7,6 +7,7 @@ in vec2 TexCoords;
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gAlbedoSpec;
+uniform sampler2D gAlbedoSpecD;
 
 // Custom SpotLight structure to keep everything organized.
 struct SpotLight
@@ -55,13 +56,6 @@ float distSquared( vec3 A, vec3 B )
 	vec3 C = A - B;
 	return dot( C, C );
 
-}
-
-// required when using a perspective projection matrix
-float LinearizeDepth(float depth)
-{
-    float z = depth * 2.0 - 1.0; // Back to NDC 
-    return (2.0 * 1.0 * 7.5) / (7.5 + 1.0 - z * (7.5 - 1.0));	
 }
 
 void main()
@@ -149,10 +143,10 @@ void main()
 	vec3 spe = inte * Specular * spotLight.Colour * pow( max( dot( viewDir, ref ), 0.0 ), 32.0 );
 
 	lighting += dif + spe;
-	// Our shadows.
 	lighting *= Normal.w;
 
 	FragColor = vec4( lighting, 1 );
+
 	// Cheap and dirty gamma correction.
     //FragColor = vec4( pow( lighting, vec3( 0.4545 ) ), 1.0 );
 

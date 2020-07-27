@@ -138,6 +138,8 @@
     <ClInclude Include="Shader.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="decal.frag" />
+    <None Include="decal.vert" />
     <None Include="forward.frag" />
     <None Include="forward.vert" />
     <None Include="gBuffer.frag" />

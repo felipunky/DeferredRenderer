@@ -19,9 +19,11 @@ in vec4 FragPosLightSpace;
 //uniform sampler2D texture1;
 // Get the shadow map.
 uniform sampler2D shadowMap;
+//uniform sampler2D texture1;
 
 // This corresponds to the camera.
 uniform vec3 lightPos;
+uniform vec3 viewPos;
 uniform float time;
 
 float ShadowBias( float d )
@@ -94,10 +96,38 @@ void main()
 	gAlbedoSpec.rgb = diff;
 	gAlbedoSpec.a = spe;*/
 
+	/*if( abs( objPos.x ) > 0.5 && abs( objPos.y ) > 0.5 && abs( objPos.z ) > 0.5 )
+	{
+	
+		gAlbedoSpec.rgb = texture( texture1, uv );
+	
+	}*/
+
 	// Otherwise simply define a colour of your liking and be done!
     gAlbedoSpec.rgb = vec3( 0.5 );//vec3( Normal * 0.5 + 0.5 );
     // We are using the alpha channel of the gAlbedoSpec vec3 to store 
 	// our specular world, again in an ideal world this would be a 
 	// pre-computed specular map. 
     gAlbedoSpec.a = 1.0;
+
+	/*vec3 ndcPos = clipSpace.xyz / clipSpace.w;
+	vec2 uv = ndcPos.xy * 0.5 + 0.5;
+	float depth = texture( shadowMap, uv ).r;
+	float sampleNdcZ = depth * 2.0 - 1.0;
+
+	vec3 ndcSample = vec3( ndcPos.xy, sampleNdcZ );
+
+	vec4 hViewPos = invProj * vec4( ndcSample, 1.0 );
+	vec3 viewPosition = hViewPos.xyz / hViewPos.w;
+
+	vec3 worldPos = ( invView * vec4( viewPosition, 1.0 ) ).xyz;
+	vec3 objectPosition = ( invModel * vec4( worldPos, 1.0 ) ).xyz;
+
+	if( abs( objectPosition.x ) > 0.5 && abs( objectPosition.y ) > 0.5 && abs( objectPosition.z ) > 0.5 ) 
+	{
+	
+		 //gAlbedoSpec.rgb = vec3( 1, 0, 0 );
+	
+	}*/
+
 }
