@@ -95,8 +95,9 @@ private:
 	const float linear = 0.7;
 	const float quadratic = 1.8;
 	// Spotlight position.
-	glm::vec3 lightPos = glm::vec3( -4.5f, 3.0f, -1.0f );
-	glm::vec3 lightDir = glm::normalize( glm::vec3( 0.5f, 1.0f, 3.0f ) - lightPos );
+	// Lights that go in a direction similar to dawn are more cinematic!
+	glm::vec3 lightPos = glm::vec3( 20.5f, 2.5f, 2.5f );
+	glm::vec3 lightDir = glm::normalize( glm::vec3( 3.5f, 2.0f, 3.0f ) - lightPos );
 	glm::vec3 lightCol = glm::vec3( 1.0f );
 
 	std::vector<glm::vec3> lightPositions, lightColours;
@@ -248,9 +249,12 @@ private:
 		shaderF->use();
 		shaderF->setMat4( "projection", projection );
 		
-		float nearPlane = 1.0f, farPlane = 7.5;
+		//float nearPlane = 0.1f, farPlane = 20.5f;
 
-		glm::mat4 lightProj = projection;//glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, nearPlane, farPlane);
+		// https://forums.raywenderlich.com/t/chapter-14-spotlight-shadow-map/60775/3
+		glm::mat4 lightProj = glm::perspective( glm::radians( 70.0f ), 1.0f,
+												0.1f, 100.0f
+												);// glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, nearPlane, farPlane);
 
 		while( !glfwWindowShouldClose( window ) )
 		{
@@ -274,6 +278,12 @@ private:
 			glm::mat4 view = glm::lookAt( camPos, camPos + camFront, camUp );
 
 			// Render the shadow map.
+			// This is realtime so why not?
+			// Calculate a vector from the parametric equation of a circle so that our spotlight can be directed
+			// radially.
+			// Uncomment the following lines for moving lights!
+			//lightDir = glm::vec3( 10.f * sin( time * 0.3 ), 0.0f, 10.0f * cos( time * 0.3 ) ) - lightPos;
+			//lightDir = glm::normalize( lightDir );
 			glm::mat4 lightView = glm::lookAt( lightPos, lightPos + lightDir, glm::vec3( 0.0f, 1.0f, 0.0f ) );;
 			glm::mat4 lightSpace = lightProj * lightView;
 			shaderShadow->use();
@@ -376,6 +386,7 @@ private:
 			model = glm::mat4( 1.0f );
 			model = glm::translate( model, lightPos );
 			model = glm::scale( model, glm::vec3( 0.2f ) );
+			//model = glm::rotate( model,  )
 			shaderF->setMat4( "model", model );
 			shaderF->setVec3( "lightColour", lightCol );
 			renderCube();
@@ -415,7 +426,7 @@ private:
 			// Restart the matrix for each element.
 			model = glm::mat4( 1.0f );
 			model = glm::translate( model, objectPositions[i] + glm::vec3( 0.0f, 
-																			sin( time + i ) + 1.0f, 
+																			sin( time * 0.1f + i ) + 1.0f, 
 																			0.0f ) ) ;
 			model = glm::scale( model, glm::vec3( 0.8f ) );
 			//model = glm::rotate( model, glm::radians( -90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );

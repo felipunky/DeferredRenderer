@@ -23,6 +23,13 @@ uniform sampler2D shadowMap;
 // This corresponds to the camera.
 uniform vec3 lightPos;
 
+float ShadowBias( float d )
+{
+
+	return max( 0.05 * ( 1.0 - d ), 0.005 );
+
+}
+
 float ShadowCalculation(vec4 fragPosLightSpace)
 {
     // perform perspective divide
@@ -36,25 +43,31 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     // calculate bias (based on depth map resolution and slope)
     vec3 normal = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
-    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
-    // check whether current frag pos is in shadow
-    // float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
-    // PCF
-    float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
-    for(int x = -1; x <= 1; ++x)
-    {
-        for(int y = -1; y <= 1; ++y)
-        {
-            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
-            shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;        
-        }    
-    }
-    shadow /= 9.0;
+	float d = dot(normal, lightDir);
+
+	float shadow = 0.0;
+	//if( d < cos( radians( 12.5 ) ) )
+	{
+
+		float bias = ShadowBias( d );
+		// check whether current frag pos is in shadow
+		// float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+		// PCF
+		vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+		for(int x = -1; x <= 1; ++x)
+		{
+			for(int y = -1; y <= 1; ++y)
+			{
+				float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+				shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;        
+			}    
+		}
+		shadow /= 9.0;
     
-    // keep the shadow at 0.0 when outside the far_plane region of the light's frustum.
-    if(projCoords.z > 1.0)
-        shadow = 0.0;
+		// keep the shadow at 0.0 when outside the far_plane region of the light's frustum.
+		if(projCoords.z > 1.0)
+			shadow = 0.0;
+	}
         
     return shadow;
 }
